@@ -80,6 +80,7 @@ class OgSelectionHandler extends EntityReference_SelectionHandler_Generic {
 
     // FIXME: http://drupal.org/node/1325628
     unset($query->tags['node_access']);
+    unset($query->tags['taxonomy_term_access']);
 
     // FIXME: drupal.org/node/1413108
     unset($query->tags['entityreference']);
