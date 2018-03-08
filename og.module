@@ -2159,7 +2159,9 @@ function og_user_access($group_type, $gid, $string, $account = NULL, $skip_alter
   // Group manager has all privileges (if variable is TRUE).
   if (!empty($account->uid) && variable_get('og_group_manager_full_access', TRUE)) {
     $group = entity_load_single($group_type, $gid);
-    if (!empty($group->uid) && $group->uid == $account->uid) {
+    // Allow for the possibility that the group entity has been deleted.
+    // See https://drupal.org/node/1673472
+    if (!empty($group) && !empty($group->uid) && $group->uid == $account->uid) {
       return TRUE;
     }
   }
@@ -2188,20 +2190,22 @@ function og_user_access($group_type, $gid, $string, $account = NULL, $skip_alter
     // Let modules alter the permissions. since $perm is static we create
     // a clone of it.
     $group = !empty($group) ? $group : entity_load_single($group_type, $gid);
-    $temp_perm = $perm[$identifier][$account->uid];
-    $context = array(
-      'string' => $string,
-      'group_type' => $group_type,
-      'group' => $group,
-      'account' => $account,
-    );
-    drupal_alter('og_user_access', $temp_perm, $context);
+    if (!empty($group)) {
+      $temp_perm = $perm[$identifier][$account->uid];
+      $context = array(
+        'string' => $string,
+        'group_type' => $group_type,
+        'group' => $group,
+        'account' => $account,
+      );
+      drupal_alter('og_user_access', $temp_perm, $context);
 
-    // Re-assing the altered permissions.
-    $perm[$identifier][$account->uid] = $temp_perm;
+      // Re-assing the altered permissions.
+      $perm[$identifier][$account->uid] = $temp_perm;
 
-    // Make sure alter isn't called for the same permissions.
-    $perm_alter[$identifier][$account->uid][$string] = TRUE;
+      // Make sure alter isn't called for the same permissions.
+      $perm_alter[$identifier][$account->uid][$string] = TRUE;
+    }
   }
 
   return !empty($perm[$identifier][$account->uid][$string]) || (!empty($perm[$identifier][$account->uid]['administer group']) && !$ignore_admin);
