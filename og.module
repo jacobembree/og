@@ -2789,7 +2789,9 @@ function og_get_user_roles($group_type, $gid, $uid = NULL, $include = TRUE, $che
 
 
   $rids = array();
-  $group = entity_load_single($group_type, $gid);
+  if (!$group = entity_load_single($group_type, $gid)) {
+    return $rids;
+  }
   // Get the bundle of the group.
   list(,, $bundle) = entity_extract_ids($group_type, $group);
 
