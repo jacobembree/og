@@ -3350,6 +3350,11 @@ function og_set_breadcrumb($entity_type, $etid, $path = array()) {
   $entity = entity_load_single($entity_type, $etid);
   $label = entity_label($entity_type, $entity);
   $uri = entity_uri($entity_type, $entity);
+  if ($entity_type == 'taxonomy_term') {
+    foreach ($path as $delta => $path_item) {
+      $path[$delta] = str_replace('taxonomy_term/', 'taxonomy/term/', $path[$delta]);
+    }
+  }
   drupal_set_breadcrumb(array_merge(array(l(t('Home'), '<front>')), array(l($label, $uri['path'])), $path));
 }
 
