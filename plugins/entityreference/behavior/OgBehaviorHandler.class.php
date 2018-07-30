@@ -141,7 +141,12 @@ class OgBehaviorHandler extends EntityReference_BehaviorHandler_Abstract {
         $values['state'] = $states[$gid];
       }
 
-      og_group($group_type, $gid, $values);
+      try {
+        og_group($group_type, $gid, $values);
+      }
+      catch (EntityMalformedException $e) {
+        // Group may no longer exist.
+      }
     }
   }
 
