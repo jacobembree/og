@@ -138,6 +138,13 @@ function og_context_og_context_negotiation_info() {
     'menu path' => array('user/%/edit'),
   );
 
+  $providers['taxonomy_term'] = array(
+    'name' => t('Taxonomy term'),
+    'description' => t("Determine context by checking if a taxonomy term is a group or group content."),
+    'callback' => 'og_context_handler_taxonomy_term',
+    'menu path' => array('taxonomy/term/%', 'group/%/%/admin'),
+  );
+
   $providers['comment'] = array(
     'name' => t('Comment'),
     'description' => t("Determine context by checking if the parent content of the comment belongs to a group"),
@@ -588,6 +595,64 @@ function og_context_handler_user_view() {
  */
 function og_context_handler_user_edit() {
   return _group_context_handler_entity('user');
+}
+
+/**
+ * Context handler: Get groups from existing taxonomy term or ctools context.
+ *
+ * @param object $term
+ *   (optional) A taxonomy term. If empty a taxonomy term object will be
+ *   attempted to be loaded via menu_get_object().
+ */
+function og_context_handler_taxonomy_term($term = NULL) {
+  if (empty($term) && $term = menu_get_object()) {
+    return _group_context_handler_entity('taxonomy_term', $term);
+  }
+
+  $item = menu_get_item();
+
+  if (empty($item['map'])) {
+    // User has no access to the menu item.
+    return;
+  }
+
+  if (strpos($item['path'], 'taxonomy/term/%') === 0 && !empty($item['map'][2]) && !is_object($item['map'][2])) {
+    $term = taxonomy_term_load($item['map'][2]);
+  }
+  elseif (strpos($item['path'], 'group/%/%/admin') === 0 && !empty($item['map'][1]) && $item['map'][1] == 'taxonomy_term') {
+    $term = taxonomy_term_load($item['map'][2]);
+  }
+
+  if ($term) {
+    return _group_context_handler_entity('taxonomy_term', $term);
+  }
+
+  // The path may not be %taxonomy_term, but in fact is a ctools-context, so
+  // extract the taxonomy term from it. We check only the 2nd position (e.g.
+  // taxonomy/term/%/foo).
+  if (empty($item['map'][2]) || !is_object($item['map'][2])) {
+    return;
+  }
+
+  $context = clone $item['map'][2];
+
+  // Check the context is a taxonomy term bundle. We check only paths similar to
+  // taxonomy/term/%/foo and don't traverse over all the arguments, as it might
+  // be a page manager page passing multiple taxonomy terms (e.g.
+  // some/path/with/%taxonomy_term/%taxonomy_term). Implementing modules wanting
+  // to handle the above example, should implement their own context handler.
+  if ($item['map'][2] instanceof ctools_context) {
+    if (empty($context->type[0]) || $context->type[0] != 'entity:taxonomy_term') {
+      return;
+    }
+    return _group_context_handler_entity('taxonomy_term', $context->data);
+  }
+  // We might have the taxonomy term object as part of menu_get_item().
+  // Check for vid and tid to make sure that this is a taxonomy term, and not
+  // just an entity that has a "tid" property.
+  if (isset($context->vid) && isset($context->tid)) {
+    return _group_context_handler_entity('taxonomy_term', $context);
+  }
 }
 
 /**
